@@ -1,0 +1,84 @@
+<!doctype html>
+<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <title>beachbump!</title>
+  <meta name="description" content="beachball madness!">
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+ 
+  <link rel="apple-touch-icon-precomposed" sizes="114x114" href="images/h/apple-touch-icon.png" />
+  <link rel="apple-touch-icon-precomposed" sizes="72x72" href="images/m/apple-touch-icon.png" />
+  <link rel="apple-touch-icon-precomposed" href="images/l/apple-touch-icon-precomposed.png" />
+  <link rel="shortcut icon" href="images/l/apple-touch-icon.png" />
+
+  <link rel="apple-touch-startup-image" sizes="1024x748" href="images/startup-tablet-landscape.png"/>
+  <link rel="apple-touch-startup-image" sizes="768x1004" href="images/startup-tablet-portrait.png"/>
+  <link rel="apple-touch-startup-image" href="images/startup.png" />
+  <link rel="apple-touch-startup-image" sizes="640x960" href="images/startup-retina.png"/>
+
+  <link href='http://fonts.googleapis.com/css?family=Wellfleet' rel='stylesheet' type='text/css'>
+  <link href="style/style.css" rel="stylesheet" type="text/css" />
+  <link href="style/animation.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body> 
+   <img src="images/hit-icon.png" id="hit-icon" class="hit-icon" />
+   <img src="images/dune.png" id="dune" class="dune" />
+   <img src="images/small-crab.png" id="crab" class="crab" />
+   <img src="images/small-pink-crab.png" id="pink-crab" class="crab" />
+   <header>
+      <h1 id="message"></h1>
+   </header>
+   <div id="beach">
+      <div id="beachball">
+        <div class="animation">
+          <div id="hit-counter"></div>        
+          <div class="image"></div>
+        </div>
+      </div>
+   </div>
+   <script src="js/jquery-1.7.2.min.js"></script>
+   <script src="js/underscore.min.js"></script>
+   <script src="js/QuadTree.js"></script>
+   <script src="js/scene.js"></script>
+   <script src="js/scene.collisions.js"></script>   
+   <script src="js/beachbump/game.js"></script>
+   <script src="js/beachbump/ui.js"></script>
+   <script>
+      $(document).ready(function() {
+               
+        BeachBump.events.on('loaded.core', function() {
+          console.log('BeachBump core loaded');
+          BeachBump.restart();
+        });       
+
+        /* All speeds and velocities are in px/s */
+        BeachBump.load({
+          maxHits : 3,
+          totalDunes : 5,
+          crabScuttleSpeed : 20,
+          crabDy : -10,
+          maxCrabs : 5,
+          jumpAcceleration : 800,
+          jumpVelocity : -500,
+          jumpResetDelay : 0.2,
+          leftRightSpeed : 500,
+          skidSpeed : 100,
+          maxSkidSpeed : 800,
+          beachDx : 0,
+          beachDy : -400,
+          gameDelay : 0.05
+        });
+      });
+   </script>   
+</body>
+</html>

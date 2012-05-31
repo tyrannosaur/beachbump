@@ -1,0 +1,445 @@
+button,
+input[type="button"],
+input[type="reset"],
+input[type="submit"] {
+  cursor: pointer;
+  -webkit-appearance: button;
+  *overflow: visible;
+}
+body {
+  padding: 0px;
+  margin: 0px;
+  position: relative;
+  font-family: 'Wellfleet', 'Arial', sans;
+}
+#beachball {
+  position: fixed;
+  width: 160px;
+  height: 160px;
+  left: 50%;
+  top: 50%;
+  background-image: url("../images/beachball-uni.png");
+  background-repeat: no-repeat;
+  -webkit-animation: beachball-spin 1.5s step-start 0s infinite;
+  -moz-animation: beachball-spin 1.5s step-start 0s infinite;
+  -ms-animation: beachball-spin 1.5s step-start 0s infinite;
+  -o-animation: beachball-spin 1.5s step-start 0s infinite;
+  animation: beachball-spin 1.5s step-start 0s infinite;
+  z-index: 10;
+}
+#beach {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background-image: url("../images/sand.png");
+  background-position: 0 0;
+}
+#dune,
+#crab,
+#pink-crab,
+#hit-icon {
+  display: none;
+}
+.dune,
+.crab {
+  position: fixed;
+}
+.crab {
+  -webkit-animation: crab-scuttle 1s linear 0s infinite;
+  -moz-animation: crab-scuttle 1s linear 0s infinite;
+  -ms-animation: crab-scuttle 1s linear 0s infinite;
+  -o-animation: crab-scuttle 1s linear 0s infinite;
+  animation: crab-scuttle 1s linear 0s infinite;
+}
+.invulnerable {
+  opacity: 0.5;
+}
+.hit-icon {
+  width: 50px;
+  height: 50px;
+  margin: 8px;
+}
+#hit-counter {
+  position: absolute;
+  left: -20px;
+  top: -80px;
+  width: 200px;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  -ms-border-radius: 10px;
+  -o-border-radius: 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.4);
+  z-index: 20;
+}
+header h1,
+header h3 {
+  width: 100%;
+  text-align: center;
+  font-size: 28pt;
+  margin: 0;
+  padding: 0;
+}
+header h3 {
+  font-size: 18pt;
+}
+header {
+  color: #fff;
+  background: rgba(130,82,31,0.5);
+  padding: 15px;
+  position: fixed;
+  width: 100%;
+  min-height: 65px;
+  height: auto;
+  z-index: 15;
+}
+@-moz-keyframes crab-scuttle {
+  0% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+
+  50% {
+    -webkit-transform: rotate(10deg);
+    -moz-transform: rotate(10deg);
+    -ms-transform: rotate(10deg);
+    -o-transform: rotate(10deg);
+    transform: rotate(10deg);
+  }
+
+  100% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+}
+@-webkit-keyframes crab-scuttle {
+  0% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+
+  50% {
+    -webkit-transform: rotate(10deg);
+    -moz-transform: rotate(10deg);
+    -ms-transform: rotate(10deg);
+    -o-transform: rotate(10deg);
+    transform: rotate(10deg);
+  }
+
+  100% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+}
+@-o-keyframes crab-scuttle {
+  0% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+
+  50% {
+    -webkit-transform: rotate(10deg);
+    -moz-transform: rotate(10deg);
+    -ms-transform: rotate(10deg);
+    -o-transform: rotate(10deg);
+    transform: rotate(10deg);
+  }
+
+  100% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+}
+@-ms-keyframes crab-scuttle {
+  0% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+
+  50% {
+    -webkit-transform: rotate(10deg);
+    -moz-transform: rotate(10deg);
+    -ms-transform: rotate(10deg);
+    -o-transform: rotate(10deg);
+    transform: rotate(10deg);
+  }
+
+  100% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+}
+@keyframes crab-scuttle {
+  0% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+
+  50% {
+    -webkit-transform: rotate(10deg);
+    -moz-transform: rotate(10deg);
+    -ms-transform: rotate(10deg);
+    -o-transform: rotate(10deg);
+    transform: rotate(10deg);
+  }
+
+  100% {
+    -webkit-transform: rotate(-10deg);
+    -moz-transform: rotate(-10deg);
+    -ms-transform: rotate(-10deg);
+    -o-transform: rotate(-10deg);
+    transform: rotate(-10deg);
+  }
+}
+@-moz-keyframes beachball-spin {
+  0% {
+    background-position: 0px 0px;
+  }
+
+  10% {
+    background-position: 0px -1440px;
+  }
+
+  20% {
+    background-position: 0px -1280px;
+  }
+
+  30% {
+    background-position: 0px -1120px;
+  }
+
+  40% {
+    background-position: 0px -960px;
+  }
+
+  50% {
+    background-position: 0px -800px;
+  }
+
+  60% {
+    background-position: 0px -640px;
+  }
+
+  70% {
+    background-position: 0px -480px;
+  }
+
+  80% {
+    background-position: 0px -320px;
+  }
+
+  90% {
+    background-position: 0px -160px;
+  }
+
+  100% {
+    background-position: 0px 0px;
+  }
+}
+@-webkit-keyframes beachball-spin {
+  0% {
+    background-position: 0px 0px;
+  }
+
+  10% {
+    background-position: 0px -1440px;
+  }
+
+  20% {
+    background-position: 0px -1280px;
+  }
+
+  30% {
+    background-position: 0px -1120px;
+  }
+
+  40% {
+    background-position: 0px -960px;
+  }
+
+  50% {
+    background-position: 0px -800px;
+  }
+
+  60% {
+    background-position: 0px -640px;
+  }
+
+  70% {
+    background-position: 0px -480px;
+  }
+
+  80% {
+    background-position: 0px -320px;
+  }
+
+  90% {
+    background-position: 0px -160px;
+  }
+
+  100% {
+    background-position: 0px 0px;
+  }
+}
+@-o-keyframes beachball-spin {
+  0% {
+    background-position: 0px 0px;
+  }
+
+  10% {
+    background-position: 0px -1440px;
+  }
+
+  20% {
+    background-position: 0px -1280px;
+  }
+
+  30% {
+    background-position: 0px -1120px;
+  }
+
+  40% {
+    background-position: 0px -960px;
+  }
+
+  50% {
+    background-position: 0px -800px;
+  }
+
+  60% {
+    background-position: 0px -640px;
+  }
+
+  70% {
+    background-position: 0px -480px;
+  }
+
+  80% {
+    background-position: 0px -320px;
+  }
+
+  90% {
+    background-position: 0px -160px;
+  }
+
+  100% {
+    background-position: 0px 0px;
+  }
+}
+@-ms-keyframes beachball-spin {
+  0% {
+    background-position: 0px 0px;
+  }
+
+  10% {
+    background-position: 0px -1440px;
+  }
+
+  20% {
+    background-position: 0px -1280px;
+  }
+
+  30% {
+    background-position: 0px -1120px;
+  }
+
+  40% {
+    background-position: 0px -960px;
+  }
+
+  50% {
+    background-position: 0px -800px;
+  }
+
+  60% {
+    background-position: 0px -640px;
+  }
+
+  70% {
+    background-position: 0px -480px;
+  }
+
+  80% {
+    background-position: 0px -320px;
+  }
+
+  90% {
+    background-position: 0px -160px;
+  }
+
+  100% {
+    background-position: 0px 0px;
+  }
+}
+@keyframes beachball-spin {
+  0% {
+    background-position: 0px 0px;
+  }
+
+  10% {
+    background-position: 0px -1440px;
+  }
+
+  20% {
+    background-position: 0px -1280px;
+  }
+
+  30% {
+    background-position: 0px -1120px;
+  }
+
+  40% {
+    background-position: 0px -960px;
+  }
+
+  50% {
+    background-position: 0px -800px;
+  }
+
+  60% {
+    background-position: 0px -640px;
+  }
+
+  70% {
+    background-position: 0px -480px;
+  }
+
+  80% {
+    background-position: 0px -320px;
+  }
+
+  90% {
+    background-position: 0px -160px;
+  }
+
+  100% {
+    background-position: 0px 0px;
+  }
+}
