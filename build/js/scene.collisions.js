@@ -33,8 +33,8 @@
    function rectRect($1, $2) {    
       return !($2.x - $2.width/2 > $1.x + $1.width/2 ||
                $2.x + $2.width/2 < $1.x - $1.width/2 ||
-               $2.y + $2.height/2 > $1.y - $1.height/2 ||
-               $2.y - $2.height/2 < $1.y + $1.height/2);
+               $2.y - $2.height/2 > $1.y + $1.height/2 ||
+               $2.y + $2.height/2 < $1.y - $1.height/2);
    }
 
    /* A shape */
@@ -46,8 +46,8 @@
    Shape.prototype.hitTest = function(other) {
       if (other) {
          if (this.type == 'circle' && other.type == 'circle') { return circleCirc(this, other); }            
-         else if (this.type == 'circle' || other.type == 'rectangle') { return circleRect(this, other); }
-         else if (this.type == 'rectangle' || other.type == 'circle') { return circleRect(other, this); }
+         else if (this.type == 'circle' && other.type == 'rectangle') { return circleRect(this, other); }
+         else if (this.type == 'rectangle' && other.type == 'circle') { return circleRect(other, this); }
          else if (this.type == 'rectangle' && other.type == 'rectangle') { return rectRect(this, other); }
       }      
    };
@@ -117,6 +117,7 @@
           }, false, maxDepth, maxChildren);        
 
       scene.SceneObj.prototype.shape = shape;
+      scene.SceneObj.prototype.isCollidable = true;
 
       scene.schedule('after', function(dt, objects) {
          tree.clear();
@@ -124,7 +125,7 @@
             return obj.shape();
          }));
          _.each(objects, function(obj, key) {
-            if (obj.shape) {
+            if (obj.shape && obj.isCollidable) {
                var shape = obj.shape(),
                    neighbours = tree.retrieve(shape),
                    neighbour,

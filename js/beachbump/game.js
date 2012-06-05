@@ -7,76 +7,14 @@
    controls
    ========
    
-   move left   - 'A' key or tilting left (on a device with an accelerometer)
-   move right  - 'D' key or tilting right
-   jump        - space key or shaking the device up and down
+   move left   - left arrow key or tilting left (on a device with an accelerometer)
+   move right  - right arrow key or tilting right
+   jump        - space key or touching the screen
    
 */
 
 (function(exports) {
-  /*  Calculate 1-dimensional trajectories.
-      
-      calc      Return distance travelled and the current velocity after
-                incrementing the time.
-      reset     Resets the time.
-      on        Listens for events emitted. Events are:
 
-                  'max-velocity'      : maximum velocity reached
-                  'max-time'          : maximum time reached
-                  'returned-to-start' : the starting coordinate has been reached
-
-                All of the above are emitted at the exact time or closest possible
-                time less than the exact time.
-  */
-  function trajectory(settings) {
-    var t = 0,
-        x = settings.x || 0,
-        v = settings.v || 0,
-        a = settings.a || 0,            
-        returnToStart = settings.returnToStart || false,
-        maxT = settings.maxT || NaN,
-        maxV = settings.maxV || NaN,
-        evtEmitter = new scene.EventEmitter();
-
-    var disc = v*v-4*x*a,
-        returnTime = NaN;
-
-    function calc(t) {
-      return {x: x+v*t+a*t*t, v: v+(a*t)/2};
-    }
-
-    if (disc > 0 && a != 0) {
-        returnTime = (-v + Math.sqrt(disc))/(2*a) ||
-                     (-v - Math.sqrt(disc))/(2*a);
-    }                          
-
-    return {
-      calc : function(dt) {
-        var nextT = t+dt,
-            next = calc(nextT),
-            shouldCalc = true;
-
-        if (next.v > maxV) {
-          evtEmitter.emit('max-velocity');
-          shouldCalc &= false;
-        }
-        if (nextT > maxT) {
-          evtEmitter.emit('max-time');
-          shouldCalc &= false;
-        }
-        if (Math.abs(nextT) > Math.abs(returnTime)) {
-          evtEmitter.emit('returned-to-start', calc(returnTime), returnTime-t);
-          if (returnToStart) { return calc(returnTime); }
-        }              
-        
-        if (shouldCalc) { t += dt; }
-        return calc(t);
-      },
-      reset : function() { t=0; },
-      on : function() { return evtEmitter.on.apply(evtEmitter, arguments); }
-    };
-  };
-  
   /* The game */
 
   var $beach,
@@ -93,10 +31,44 @@
       beachDy;                // the beach's x-velocity in px/s
 
   var maxHits,                // maximum number of hit points
-      currentHits;            // current number of hits points
-      invulnerable = false;
-      
-  var started = false;        // is the game started?
+      currentHits,            // current number of hits points
+      hitInvulnerabilityDuration,
+      invulnerable = false,
+      started = false;        // is the game started?
+
+  var maps = {};
+
+  /*  Clamp the beachball to the sides of the screen. */
+  maps.beachballMap = function(x, y) {
+    if (x <= 0) { x = 0; }
+    else if (x >= beachWidth-this.width()) { x = beachWidth-this.width(); }
+    return {x:x, y:y};
+  };
+
+  /*  When the dune has reached the top (or bottom, if the beachDy is position)
+      of the screen, reposition it on the opposite side at a random x position.
+  */
+  maps.duneMap  = function(x, y) {
+    if (beachDy > 0 && y <= 0) {
+      y = beachHeight;
+      x = Math.random() * beachWidth - this.width();
+    } 
+    else if (beachDy < 0 && y >= beachHeight) {
+      y = 0;
+      x = Math.random() * beachWidth - this.width();
+    }
+    return {x:x, y:y};
+  };
+
+  /*  Wrap any points outside the beach back on to the beach, but
+      on the opposite side.
+  */
+  maps.wrapMap = function(x, y) {
+    return {
+      x: (x >= 0) ? x % beachWidth : beachWidth - (-x % beachWidth),
+      y: (y >= 0) ? y % beachHeight : beachHeight - (-y % beachHeight)
+    }
+  };
 
   var game = exports.BeachBump = {};
 
@@ -108,17 +80,31 @@
     return delay;
   }
 
-  /*  Toggle invulernability (strict boolean) and notify that it's
-      been toggled.
+  /*  Toggle invulernability and notify that it's been toggled.
   */
-  game.invulnerable = function() {
-    if (arguments[0] != undefined) {
-      invulnerable = arguments[0];
-      game.events.emit('invulnerable', arguments[0]);
+  game.invulnerable = function(val) {
+    if (val != undefined) {
+      invulnerable = Boolean(val);
+      game.events.emit('invulnerable', val);
     }
     else {
       return invulnerable;
     }
+  }
+
+  /*  Adds a CSS class to start an animation; removes it and calls a callbacks
+      once the animation has finished.
+  */
+  var animator = function(el, cssClass, onStart, onEnd) {
+    var $el = $(el);
+    $el.on('animationend webkitAnimationEnd MSAnimationEnd oAnimationEnd', function(e) {
+          $el.removeClass(cssClass);
+          onEnd.call(null, e);
+        })
+        .on('animationstart webkitAnimationStart MSAnimationStart oAnimationStart', onStart);
+    return function() {
+      el.addClass(cssClass);  
+    };
   }
 
   /* Convenience function to call when the beachball has been hit by something
@@ -140,16 +126,6 @@
       }
     }
   }
-
-  /*  Wrap any points outside the beach back on to the beach, but
-      on the opposite side.
-  */
-  function beachMap(u, v) {
-    return {
-      x: (u >= 0) ? u % beachWidth : beachWidth - (-u % beachWidth),
-      y: (v >= 0) ? v % beachHeight : beachHeight - (-v % beachHeight)
-    };
-  }
        
   /*  Make the beachball */
   function makeBeachball() {
@@ -159,7 +135,7 @@
     return scene('#beachball', {
       x : (beachWidth - width)/2, 
       y : (beachHeight - height)/2,            
-      map : beachMap
+      map : maps.beachballMap
     })
     .shape({
       type : 'circle'
@@ -167,7 +143,9 @@
   }
 
   /*  Make some dunes */
-  function makeDunes(n) {
+  function makeDunes(settings) {
+    var n = settings.totalDunes;
+
     for (var i=0; i<n; i++) {
       var id = 'dune' + i,
           $img = $('#dune').clone();
@@ -182,7 +160,7 @@
         y : Math.random() * beachHeight,
         dx : beachDx,
         dy : beachDy,
-        map : beachMap
+        map : maps.wrapMap
       })
       .shape({
         type : 'rectangle',
@@ -202,9 +180,10 @@
     });
   }     
 
-  function makeCollisions(skidSpeed, maxSpeed) {      
-    var $beach = $('#beach');
-
+  function makeCollisions(settings) {     
+    var skidSpeed = settings.skidSpeed,
+        maxSpeed = settings.maxSpeed;
+ 
     scene.loadCollisions({
       x : 0,
       y : 0,
@@ -216,12 +195,14 @@
     scene.events.on('collision', function($1, $2) {     
       var hitObj;
 
+      /*
       // Crab on crab action: break up the crabs
       if (/#crab/i.test($1) && /#crab/i.test($2)) {
         var vel = 20 + Math.random() * 40;
         scene($1).vel(vel, 0);
         scene($2).vel(-vel, 0);
       }
+      */
 
       if ($1 == '#beachball') { hitObj = $2; }
       else if ( $2 == '#beachball') { hitObj = $1; }
@@ -266,7 +247,7 @@
 
     function despawnCrab() {
       scene.remove(this.name);
-      numCrabs -=1;
+      numCrabs -= 1;
     }      
 
     function scuttleMotion(delay, x, y) {      
@@ -340,45 +321,34 @@
 
   /* Move the scene object left, right or make it bounce */
   function motion(sceneObj, settings) {                  
-    var jumpResetDelay = settings.jumpResetDelay,
+    var leftRightResetDelay = settings.leftRightResetDelay,
         leftRightSpeed = Math.abs(settings.leftRightSpeed) || 0,
-        jumpAccel = settings.jumpAccel || 0,
-        jumpVel = settings.jumpVel || 0,
-        jumping = false,
-        lastJumpY = 0,
-        jumpTraj = trajectory({
-          a : jumpAccel,
-          v : jumpVel,
-          returnToStart : true
-        });
+        leftRightReset,
+        jump,
+        jumping = false;
 
-    var reset = _.debounce(function() {
-      sceneObj.vel(0, 0);
-    }, 1000*jumpResetDelay);
-              
-    jumpTraj.on('returned-to-start', function(calc, dt) {
-      jumping = false;
-      invulnerable(false);
-      jumpTraj.reset();           
-    });         
-
-    sceneObj.addMotion('jump', function(delay, x, y) {
-      if (jumping) {            
-        var thisJumpY = jumpTraj.calc(delay).x,
-            ret = {
-              x : 0,
-              y : thisJumpY - lastJumpY
-            };
-        lastJumpY = thisJumpY;
-        return ret;
-      }
-    });
-   
+    /* Only set this if the game is running */
     function invulnerable(val) {
       if (started) {
         return game.invulnerable(val);
       }
     }
+
+    function jumpStart() {
+      jumping = true;
+      invulnerable(true);
+    }
+
+    function jumpEnd() {
+      jumping = false;
+      invulnerable(false);
+    }
+
+    jump = animator($beachball, 'jump', jumpStart, jumpEnd);
+
+    reset = _.debounce(function() {
+      sceneObj.vel(0, 0);
+    }, 1000*leftRightResetDelay);              
 
     /* Enable the motion */
     function enable(direction) {            
@@ -391,8 +361,7 @@
           break;
         case 'up':
           if (!jumping) {
-            jumping = true;
-            invulnerable(true);
+            jump();
           }
           break;
       }  
@@ -414,51 +383,6 @@
     };
   }        
 
-  game.load = function(settings) {
-    var totalDunes = settings.totalDunes,
-        crabScuttleSpeed = settings.crabScuttleSpeed,
-        crabDy = settings.crabDy,
-        maxCrabs = settings.maxCrabs,
-        jumpAcceleration = settings.jumpAcceleration,
-        jumpVelocity = settings.jumpVelocity,
-        jumpResetDelay = settings.jumpResetDelay
-        leftRightSpeed = settings.leftRightSpeed,
-        skidSpeed = settings.skidSpeed,
-        maxSkidSpeed = settings.maxSkidSpeed;
-        
-    $beach = $('#beach');
-    $beachball = $('#beachball');
-    beachWidth = $beach.width();
-    beachHeight = $beach.height();
-    maxHits = settings.maxHits;
-    currentHits = settings.initialHits || 0;
-
-    delay = settings.gameDelay;
-    beachDx = settings.beachDx;
-    beachDy = settings.beachDy;
-
-    makeCollisions(skidSpeed, maxSkidSpeed);
-
-    game.spawnCrab = crabSpawner({
-      dy : crabDy,
-      scuttleSpeed : crabScuttleSpeed,
-      maxCrabs : maxCrabs
-    });
-
-    makeBeach();
-    makeDunes(totalDunes);
-    
-    var beachball = makeBeachball();
-    beachball.motion = motion(beachball, {
-      jumpAccel : jumpAcceleration,
-      jumpVel : jumpVelocity,
-      leftRightSpeed : leftRightSpeed,
-      jumpResetDelay : jumpResetDelay
-    });
-
-    game.events.emit('loaded.core', settings);    
-  };
-
   game.start = function() {
     game.invulnerable(false);
     scene.start(delay);
@@ -468,10 +392,12 @@
 
   game.unpause = function() {
     scene.start(delay);
+    game.events.emit('unpaused');
   }
 
   game.pause = function() {
     scene.stop();
+    game.events.emit('paused');
   };
 
   game.restart = function() {
@@ -485,5 +411,51 @@
   game.started = function() {
     return started;
   }
+
+  game.load = function(settings) {
+    var parseTime = scene.parseTime;
+
+    /* Set these global variables */        
+    $beach = $('#beach');
+    $beachball = $('#beachball');
+    beachWidth = $beach.width();
+    beachHeight = $beach.height();
+
+    delay = parseTime(settings.gameDelay);
+    beachDx = settings.beachDx;
+    beachDy = settings.beachDy;
+
+    maxHits = settings.maxHits;
+    currentHits = settings.initialHits || 0;
+    hitInvulnerabilityDuration = parseTime(settings.hitInvulnerabilityDuration);
+
+    /* Set up collisions */
+    makeCollisions({
+      duneSkidSpeed : settings.duneSkidSpeed, 
+      maxDuneSkidSpeed : settings.maxDuneSkidSpeed
+    });
+
+    /* Make the beach and the dunes */
+    makeBeach();
+    makeDunes({
+      totalDunes : settings.totalDunes
+    });
+    
+    /* Make the beachball and give it motion */
+    var beachball = makeBeachball();
+    beachball.motion = motion(beachball, {
+      leftRightSpeed : settings.leftRightSpeed,
+      jumpResetDelay : parseTime(settings.leftRightResetDelay)
+    });
+
+    /* Create a crab spawner */
+    game.spawnCrab = crabSpawner({
+      dy : settings.crabDy,
+      scuttleSpeed : settings.crabScuttleSpeed,
+      maxCrabs : settings.maxCrabs
+    });
+
+    game.events.emit('loaded.core', settings);    
+  };
 
 })(this);

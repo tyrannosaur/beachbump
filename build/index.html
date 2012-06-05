@@ -40,7 +40,10 @@
    </header>
    <div id="beach">
       <div id="beachball">
-        <div id="hit-counter"></div>
+        <div class="animation">
+          <div id="hit-counter"></div>        
+          <div class="image"></div>
+        </div>
       </div>
    </div>
    <script src="js/jquery-1.7.2.min.js"></script>
@@ -61,19 +64,19 @@
         /* All speeds and velocities are in px/s */
         BeachBump.load({
           maxHits : 3,
+          hitInvulnerabilityDuration: '1s',
           totalDunes : 5,
-          crabScuttleSpeed : 20,
-          crabDy : -10,
-          maxCrabs : 5,
-          jumpAcceleration : 800,
-          jumpVelocity : -500,
-          jumpResetDelay : 0.2,
+          crabScuttleSpeed : 15,
+          crabMinDy : -5,
+          crabMaxDy : -30,
+          maxCrabs : 15,
+          leftRightResetDelay : '0.2s',
           leftRightSpeed : 500,
-          skidSpeed : 100,
-          maxSkidSpeed : 800,
+          duneSkidSpeed : 500,
+          maxDuneSkidSpeed : 1600,
           beachDx : 0,
           beachDy : -400,
-          gameDelay : 0.05
+          gameDelay : '0.05s'
         });
       });
    </script>   

@@ -22,17 +22,6 @@
     return {x: u, y: v};
   }
 
-  /*  Returns a time in seconds.
-      If an argument is a number, it's assumed to be in seconds.
-  */
-  function parseTime(t) {
-    if (typeof t == 'number') { return t; }
-    if (/ms$/i.test(t)) { return parseFloat(t)/1000; }
-    return parseFloat(t);
-  }
-
-  var events = new EventEmitter();
-
   /*  Find a scene object with the given selector,
       or add a new scene objects if additional arguments are given.
   */
@@ -48,6 +37,17 @@
     else {
       return objects[selector];
     }
+  }
+ 
+  var events = scene.events = new EventEmitter();
+
+  /*  Returns a time in seconds.
+      If an argument is a number, it's assumed to be in seconds.
+  */
+  var parseTime = scene.parseTime = function(t) {
+    if (typeof t == 'number') { return t; }
+    if (/ms$/i.test(t)) { return parseFloat(t)/1000; }
+    return parseFloat(t);
   }
 
   /* Selects an element from the DOM. */
@@ -132,8 +132,6 @@
       loopId = clearInterval(loopId);
     }
   };
-
-  scene.events = events;
 
   function EventEmitter() {
     this.callbacks = {};
@@ -281,7 +279,18 @@
                .style('top', map.y);
   }
 
-  /* Set or get the velocity */
+  /*  Convenience methods to get the width and height */
+  SceneObj.prototype.width = function() {
+    return parseFloat(this.style('width'));
+  }
+
+  SceneObj.prototype.height = function() {
+    return parseFloat(this.style('height'));
+  }
+
+  /*  Set or get the velocity.
+      TODO: Remove this in favor of a pre-defined motion that increases velocity.
+  */
   SceneObj.prototype.vel = function() {
     if (arguments.length == 0) {
       return {x : this.dx, y : this.dy};
@@ -296,7 +305,60 @@
       return this;
     }
   }; 
- 
+/*
+  SceneObj.prototype.makeVelocityMotion = function(dx, dy) {
+    var velocity = function() {};
+    velocity.prototype = new Motion();
+    velocity.prototype.velocity = function() {
+
+    }
+    velocity.prototype.dx = dx;
+    velocity.prototype.dy = dy;
+    
+  }
+*/
+  /*  Convenience object for creating, enabling and disabling a motion. 
+  */
+/*
+  function Motion() {
+    this.lastDx = null;
+    this.lastDy = null;
+    this._incrementer = null; 
+    this._enabled = true;
+  }
+  
+  Motion.prototype.setIncrementer = function(func) {
+    if (typeof func == 'function') {
+      this._incrementer = func;
+    }
+    returnt this;
+  }
+
+  Motion.prototype.enabled = function(val) {
+    if (val != undefined) { this._enabled = Boolean(val); }
+    else { return this._enabled; }    
+  };
+
+  Motion.prototype.inc = function(sceneobj, dt, x, y) {
+    if (this._enabled) {
+      var ret = this._incrementer.call(sceneobj, dt, x, y, this);
+      this.lastDx = ret.x;
+      this.lastDy = ret.y;
+      return ret;
+    }
+    return {x:0, y:0}
+  }
+
+  function VelocityMotion(dx, dy) {
+    this.dx = dx;
+    this.dy = dy;
+  }
+
+  VelocityMotion.prototype = new Motion();
+  VelocityMotion.prototype.velocity = function() {
+    
+  }
+*/
   scene.SceneObj = SceneObj;
   scene.EventEmitter = EventEmitter;  
 

@@ -22,16 +22,11 @@
     return {x: u, y: v};
   }
 
-  /*  Returns a time in seconds.
-      If an argument is a number, it's assumed to be in seconds.
-  */
-  function parseTime(t) {
-    if (typeof t == 'number') { return t; }
-    if (/ms$/i.test(t)) { return parseFloat(t)/1000; }
-    return parseFloat(t);
+  function findKey(obj) {
+    if (objects.hasOwnProperty(obj)) { return obj; }
+    else if (objects.hasOwnProperty(obj.name)) { return obj.name; }
+    else if (objects.hasOwnProperty(obj.selector)) { return obj.selector; }
   }
-
-  var events = new EventEmitter();
 
   /*  Find a scene object with the given selector,
       or add a new scene objects if additional arguments are given.
@@ -40,14 +35,26 @@
     var selector = arguments[0],
         settings = arguments[1];
     
+    if (!selector) { return undefined; }
     if (settings) {
       return objects[selector] = new SceneObj(selector,
                                               scene.select(selector), 
                                               settings);
     }
     else {
-      return objects[selector];
+      return objects[findKey(selector)];
     }
+  }
+ 
+  var events = scene.events = new EventEmitter();
+
+  /*  Returns a time in seconds.
+      If an argument is a number, it's assumed to be in seconds.
+  */
+  var parseTime = scene.parseTime = function(t) {
+    if (typeof t == 'number') { return t; }
+    if (/ms$/i.test(t)) { return parseFloat(t)/1000; }
+    return parseFloat(t);
   }
 
   /* Selects an element from the DOM. */
@@ -61,13 +68,15 @@
 
   /* Remove a scene object. */
   scene.remove = function(selector) {
-    if (objects.hasOwnProperty(selector)) {
+    selector = findKey(selector);
+    if (selector) {
       var node = objects[selector].node,
           parentNode = node.parentNode;          
 
       if (parentNode) {
         parentNode.removeChild(node);
       }
+      objects[selector].events.clear();
       delete objects[selector];
     }
     return this;
@@ -133,8 +142,6 @@
     }
   };
 
-  scene.events = events;
-
   function EventEmitter() {
     this.callbacks = {};
   }
@@ -155,21 +162,32 @@
   
   // bind events
   EventEmitter.prototype.on = function(type, func) {
-    (this.callbacks[type] = this.callbacks[type] || [])
-    .push(func);
+    var types = type.split(/\s+/);
+    for (var i=0; i<types.length; i++) {
+      (this.callbacks[types[i]] = this.callbacks[types[i]] || [])
+      .push(func);
+    }
+    return this;
+  }
+
+  EventEmitter.prototype.clear = function() {
+    this.callbacks = {};
     return this;
   }
 
   /* A Scene Object */
   function SceneObj(selector, node, settings) {    
-      this.node = node;             // DOM node or nodes
+      this.node = node;                   // DOM node
 
-      this.enabled = true;          // if enabled, the move('next') function of
-                                    // this SceneObj will be called every update of the
-                                    // start loop
+      this.enabled = true;                // if enabled, the position('next') function of
+                                          // this SceneObj will be called every update of the
+                                          // start loop
 
-      this._motions = [];            // list of motion functions                                       
-      this._intervals = [];
+      this.events = new EventEmitter();   // event emitter bound to this scene object.
+                                          // It will be cleared when the object is removed
+  
+      this._motions = [];                 // list of motion functions                                       
+
 
       // the position mapping function
       this.map = settings.map || defaultMap
@@ -242,6 +260,11 @@
     return this;    
   };
 
+  SceneObj.prototype.removeMotion = function(name) {  
+    delete this._motions[name];
+    return this;
+  }
+
   /*  Instantaneously move to the given or calculated position.
   
       // sum the current motions to get the next position
@@ -281,7 +304,18 @@
                .style('top', map.y);
   }
 
-  /* Set or get the velocity */
+  /*  Convenience methods to get the width and height */
+  SceneObj.prototype.width = function() {
+    return parseFloat(this.style('width'));
+  }
+
+  SceneObj.prototype.height = function() {
+    return parseFloat(this.style('height'));
+  }
+
+  /*  Set or get the velocity.
+      TODO: Remove this in favor of a pre-defined motion that increases velocity.
+  */
   SceneObj.prototype.vel = function() {
     if (arguments.length == 0) {
       return {x : this.dx, y : this.dy};
@@ -296,7 +330,61 @@
       return this;
     }
   }; 
- 
+
+/*
+  SceneObj.prototype.makeVelocityMotion = function(dx, dy) {
+    var velocity = function() {};
+    velocity.prototype = new Motion();
+    velocity.prototype.velocity = function() {
+
+    }
+    velocity.prototype.dx = dx;
+    velocity.prototype.dy = dy;
+    
+  }
+*/
+  /*  Convenience object for creating, enabling and disabling a motion. 
+  */
+/*
+  function Motion() {
+    this.lastDx = null;
+    this.lastDy = null;
+    this._incrementer = null; 
+    this._enabled = true;
+  }
+  
+  Motion.prototype.setIncrementer = function(func) {
+    if (typeof func == 'function') {
+      this._incrementer = func;
+    }
+    returnt this;
+  }
+
+  Motion.prototype.enabled = function(val) {
+    if (val != undefined) { this._enabled = Boolean(val); }
+    else { return this._enabled; }    
+  };
+
+  Motion.prototype.inc = function(sceneobj, dt, x, y) {
+    if (this._enabled) {
+      var ret = this._incrementer.call(sceneobj, dt, x, y, this);
+      this.lastDx = ret.x;
+      this.lastDy = ret.y;
+      return ret;
+    }
+    return {x:0, y:0}
+  }
+
+  function VelocityMotion(dx, dy) {
+    this.dx = dx;
+    this.dy = dy;
+  }
+
+  VelocityMotion.prototype = new Motion();
+  VelocityMotion.prototype.velocity = function() {
+    
+  }
+*/
   scene.SceneObj = SceneObj;
   scene.EventEmitter = EventEmitter;  
 

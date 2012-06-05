@@ -9,12 +9,12 @@ animation()
   -o-animation: arguments
   animation: arguments
 
-rotation()
-  -webkit-transform: rotate(arguments)
-  -moz-transform: rotate(arguments)
-  -ms-transform: rotate(arguments)
-  -o-transform: rotate(arguments)
-  transform: rotate(arguments)
+transform()
+  -webkit-transform: arguments
+  -moz-transform: arguments
+  -ms-transform: arguments
+  -o-transform: arguments
+  transform: arguments
 
 corner()
   -webkit-border-radius: arguments
@@ -23,13 +23,43 @@ corner()
   -o-border-radius: arguments
   border-radius: arguments
 
+@keyframes flash
+  0%
+    opacity: 1.0
+  50%
+    opacity: 0.25
+  100%
+    opacity: 1.0
+
+@keyframes crab-attached
+  0%
+    transform(scale(1.0))
+  50%
+    transform(scale(1.5))
+  100%
+    transform(scale(1.0))
+
+@keyframes crab-detached
+  0%
+    opacity: 1    
+    transform(translateY(0px) scale(1.0) rotate(0deg))
+  20%
+    opacity: 1
+    transform(translateY(0px) scale(1.0) rotate(180deg))
+  50%
+    opacity: 1
+    transform(translateY(0px) scale(0.8) rotate(180deg))
+  100%
+    opacity: 0
+    transform(translateY(0px) scale(0.8) rotate(180deg))
+
 @keyframes crab-scuttle
   0%
-    rotation(-10deg) 
+    transform(rotate(-10deg)) 
   50%
-    rotation(10deg)
+    transform(rotate(10deg))
   100%
-    rotation(-10deg)
+    transform(rotate(-10deg))
 
 @keyframes beachball-spin
   0%
@@ -65,6 +95,19 @@ corner()
   100%
     background-position: 0px 0px;
 
+@keyframes jump
+  0%
+    transform(translateY(20px))
+  50%
+    transform(translateY(-280px))
+  90%
+    transform(translateY(30px))
+  100%
+    transform(translateY(0px))
+
+.jump
+  animation(jump 1.0s ease-in-out 0s 1)
+
 button, input[type="button"], input[type="reset"], input[type="submit"]
   cursor: pointer
   -webkit-appearance: button
@@ -76,15 +119,19 @@ body
   position: relative
   font-family: 'Wellfleet', 'Arial', sans
 
+#beachball * .image
+  width: 160px
+  height: 160px
+  background-image: url('../images/beachball-uni.png')
+  background-repeat: no-repeat
+  animation(beachball-spin 1.2s step-start 0s infinite) 
+
 #beachball
   position: fixed
   width: 160px
   height: 160px
   left: 50%
-  top: 50% 
-  background-image: url('../images/beachball-uni.png')
-  background-repeat: no-repeat
-  animation(beachball-spin 1.5s step-start 0s infinite)
+  top: 50%
   z-index: 10
   
 #beach
@@ -101,9 +148,24 @@ body
   position: fixed
 
 .crab
-  animation(crab-scuttle 1s linear 0s infinite)
+  animation(crab-scuttle 0.8s step-start 0s infinite)
+
+.crab-attached
+  animation(crab-attached 1s ease-out 0s 2)
+
+.crab-detached
+  animation(crab-detached 1.5s ease-out 0s 1)
+
+.flash
+  -webkit-animation-fill-mode: both;
+  -moz-animation-fill-mode: both;
+  -ms-animation-fill-mode: both;
+  -o-animation-fill-mode: both;
+  animation-fill-mode: both;
+  animation(flash 0.8s step-start 0s infinite reverse)
 
 .invulnerable
+  corner(80px)
   opacity: 0.5
 
 .hit-icon
@@ -121,21 +183,20 @@ body
   z-index: 20
 
 header h1, header h3
-  width: 100%
-  text-align: center
+  display: inline-block;
   font-size: 28pt
   margin: 0
-  padding: 0
+  padding: 15px 35px 15px 35px
+  background: sand-dark-rgba
+  corner(0px 0px 25px 25px)
 
 header h3
   font-size: 18pt
 
 header
+  text-align: center
   color: white
-  background: sand-dark-rgba
-  padding: 15px
   position: fixed
   width: 100%
-  min-height: 65px
-  height: auto
+  margin: 0
   z-index: 15

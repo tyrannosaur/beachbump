@@ -7,17 +7,62 @@
         $hitCounter = $('#hit-counter'),
         $beachball = $('#beachball'),
         $message = $('#message'),
-        $w = $(window),
-        maxHits = settings.maxHits,
+        $w = $(window),         
         gx = [],
-        gy = [];
+        gy = [],
+        firstTime = true;
+
+    var counterIntervalId = null,
+        counterDelay = 10,
+        counterCount = 0;
+
+    function startCounter() {
+      if (counterIntervalId == null) {
+        counterIntervalId = setInterval(function() {
+            $message.text(counterCount.toFixed(2));
+            counterCount += 1/(counterDelay*10);
+        }, counterDelay);
+      }
+    }
+
+    function resetCounter() {
+      counterCount = 0;
+      clearInterval(counterIntervalId);
+      counterIntervalId = null;
+    }
+
+    // Start a timer to update the beachball's velocity based on the
+    // current, smoothed gravity.
+    function makeGravityPoller() {
+      var gravityScale = 100,
+          delay = 100,
+          poller = function() {
+            var sumx = 0,
+                sumy = 0;
+  
+            for (var i in gx) { sumx += gx[i]; }
+            for (var i in gy) { sumy += gy[i]; }
+
+            sumx /= gx.length;
+            sumy /= gy.length;
+
+            gx = [];
+            gy = [];
+
+            if (!isNaN(sumx) && !isNaN(sumy)) {
+              beachball.vel(sumx*gravityScale, beachball.vel().y);
+            }
+          };
+
+      return setInterval(poller, delay);
+    }
 
     // Add the hit counter
     function makeHitCounter() {
       var $hitIcon = $('#hit-icon'),
           $img;
 
-      for (var i=0; i<maxHits; i++) {
+      for (var i=0; i<game.maxHits(); i++) {
         $img = $hitIcon.clone()
                        .attr('id', 'hit-icon-' + i);
         $hitCounter.append($img)
@@ -56,43 +101,31 @@
       }
     }();
 
-    // Start a timer to update the beachball's velocity based on the
-    // current, smoothed gravity.
-    function makeGravityPoller() {
-      var gravityScale = 100,
-          delay = 100,
-          poller = function() {
-            var sumx = 0,
-                sumy = 0;
-  
-            for (var i in gx) { sumx += gx[i]; }
-            for (var i in gy) { sumy += gy[i]; }
+    /* A crab has attached to the beachball! */
+    game.events.on('crab-attached', function(numAttached) {
+      $hitCounter.children().removeClass('flash')
+                            .addClass('flash');
+    });
 
-            sumx /= gx.length;
-            sumy /= gy.length;
-
-            gx = [];
-            gy = [];
-
-            if (!isNaN(sumx) && !isNaN(sumy)) {
-              beachball.vel(sumx*gravityScale, beachball.vel().y);
-            }
-          };
-
-      return setInterval(poller, delay);
-    }
+    game.events.on('crab-detached', function(numAttached) {
+      $hitCounter.children().removeClass('flash');
+    });
 
     /* The beachball has been hit */
     game.events.on('beachball-hit', function(currentHits, maxHits) {
-      var icon = $hitCounter.children(':nth-child(' + (maxHits-currentHits+1) + ')')
-                            .css('opacity', 0.25);
+      var icons =  $hitCounter.children();
+
+      icons.slice(maxHits-currentHits)
+                 .css('opacity', 0.25);
+
+      icons.removeClass('flash')
+           .removeClass('bounce');
 
       var min = Math.min(Math.ceil(maxHits/3), 2);
 
       // Bounce the remaining hit points if there are less than 'min' remaining     
       if (currentHits >= maxHits-min) {
-        icon.prevUntil().addClass('bounce');
-        icon.nextAll().removeClass('bounce');
+        icons.slice(0, min).addClass('bounce');
       }
     });
      
@@ -105,20 +138,27 @@
     /* We've lost */
     game.events.on('lost', function() {
       $hitCounter.children().css('opacity', 1)
-                            .removeClass('bounce');      
+                            .removeClass('bounce flash');      
       game.restart();  
     });
 
     /* The game has been started */
     game.events.on('started', function() {
-      $message.html('');
+      startCounter();
       crabSpawner.start();
     });
 
     /* We've restarted: freeze the UI until the start key has been pressed */
     game.events.on('restarted', function() {
       crabSpawner.stop();
-      $message.html('touch the screen to start');     
+      if (firstTime) {
+        $message.html('touch the screen to start');     
+        firstTime = false;
+      }
+      else {
+        $message.html(counterCount.toFixed(2) + 's<br/>final time');     
+        resetCounter();
+      }
     });
 
     // Keyboard controls
