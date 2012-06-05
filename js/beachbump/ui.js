@@ -103,11 +103,13 @@
 
     /* A crab has attached to the beachball! */
     game.events.on('crab-attached', function(numAttached) {
+      $hitCounter.fadeIn();
       $hitCounter.children().removeClass('flash')
                             .addClass('flash');
     });
 
     game.events.on('crab-detached', function(numAttached) {
+      $hitCounter.fadeOut();
       $hitCounter.children().removeClass('flash');
     });
 
@@ -127,6 +129,7 @@
       if (currentHits >= maxHits-min) {
         icons.slice(0, min).addClass('bounce');
       }
+      $hitCounter.fadeOut();
     });
      
     /* The ball is invulnerable */
@@ -144,12 +147,14 @@
 
     /* The game has been started */
     game.events.on('started', function() {
+      $hitCounter.fadeOut();
       startCounter();
       crabSpawner.start();
     });
 
     /* We've restarted: freeze the UI until the start key has been pressed */
     game.events.on('restarted', function() {
+      $hitCounter.fadeOut();
       crabSpawner.stop();
       if (firstTime) {
         $message.html('touch the screen to start');     
@@ -248,6 +253,8 @@
 
     makeHitCounter();
     makeGravityPoller();
+
+    $hitCounter.hide();
 
     game.events.emit('loaded.ui');
   };

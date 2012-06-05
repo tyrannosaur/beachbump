@@ -62,6 +62,12 @@
       started = false;        // is the game started?
 
   var maps = {};
+  var dunes = [];
+
+  function shiftBeach(shift) {
+    beachDx = shift;
+    for (var i=0; i<dunes.length; i++) { dunes[i].vel(shift, dunes[i].vel().y); }
+  }
 
   /*  Clamp the beachball to the sides of the screen. */
   maps.beachballMap = function(x, y) {
@@ -174,30 +180,71 @@
     });
   }
 
-  /*  Make some dunes */
+  /*  Make some dunes.
+      Dunes should be randomly placed, but at least two beachball diameters distant 
+      to avoid trapping the ball.
+  */
   function makeDunes(settings) {
-    var n = settings.totalDunes;
+    var n = settings.totalDunes,
+        i = 0,
+        radius = $beachball.width() / 2,
+        minDistance = radius*4,
+        placed = new QuadTree({
+          x : 0,
+          y : 0,
+          width : beachWidth,
+          height : beachHeight
+        }, false, 8);
 
-    for (var i=0; i<n; i++) {
+    function addDune(x, y) {
       var id = 'dune' + i,
           $img = $('#dune').clone();
                           
       $img.attr('id', id);
       $beach.append($img);
 
-      // Make the collision width a bit smaller so the ball doesn't easily
-      // hit the sides
-      scene('#'+id, {
-        x : Math.random() * beachWidth,
-        y : Math.random() * beachHeight,
+      var dune = scene('#'+id, {
+        x : x - $img.width()/2,
+        y : y - $img.height()/2,
         dx : beachDx,
         dy : beachDy,
         map : maps.wrapMap
       })
       .shape({
-        type : 'rectangle',
-        width : $img.width()/2
+        type : 'rectangle'
       });
+
+      dunes.push(dune);
+      placed.insert(dune.shape());
+
+      i += 1;
+    }
+
+    outer: while (i < n) {
+      var x = Math.random() * beachWidth,
+          y = Math.random() * beachHeight;
+
+      var shapes = placed.retrieve({ 
+        x : x,
+        y : y,
+        width : minDistance,
+        height : minDistance
+      });
+
+      if (shapes.length == 0) {
+        addDune(x, y);
+        continue outer;
+      }
+
+      for (var j=0; j<shapes.length; j++) {
+        var dx = shapes[j].x - x,
+            dy = shapes[j].y - y;
+
+        if (Math.pow(dx, 2) + Math.pow(dy, 2) < Math.pow(minDistance, 2)) {        
+          continue outer;
+        }
+      }      
+      addDune(x, y);
     }
   }     
 
@@ -220,7 +267,6 @@
       /* Skid off the dune to the left or right, depending on which side was hit.
       */
       if ($2 == '#beachball') {
-        /*
         var beachball = scene($2),  
             dune = scene($1),       
             dir = (dune.shape().x - beachball.shape().x) < 0 ? skidSpeed: -skidSpeed,
@@ -229,7 +275,6 @@
 
         velX = velX > maxSpeed ? maxSpeed : velX;
         beachball.vel(velX , vel.y);
-        */
       }
     }
 
@@ -266,6 +311,7 @@
   function makeBeachballMotion(settings) {                  
     var leftRightResetDelay = settings.leftRightResetDelay,
         leftRightSpeed = Math.abs(settings.leftRightSpeed) || 0,
+        parallaxSpeed = settings.parallaxSpeed,
         leftRightReset,
         jump,
         jumping = false,
@@ -296,18 +342,16 @@
       end : jumpEnd
     });
 
-    reset = _.debounce(function() {
-      beachball.vel(0, 0);
-    }, 1000*leftRightResetDelay);              
-
     /* Enable the motion */
-    function enable(direction) {            
+    function enable(direction) {                  
       switch(direction) {
         case 'left':
           beachball.vel(-leftRightSpeed);
+          shiftBeach(parallaxSpeed);
           break;
         case 'right':
           beachball.vel(leftRightSpeed);
+          shiftBeach(-parallaxSpeed);          
           break;
         case 'up':
           if (!jumping) {
@@ -322,7 +366,8 @@
       switch(direction) {
         case 'left':
         case 'right':
-          //reset();
+          beachball.vel(0);
+          shiftBeach(0);
           break;
       }
     }
@@ -560,18 +605,20 @@
       maxDuneSkidSpeed : settings.maxDuneSkidSpeed
     });
 
-    /* Make the beach and the dunes */
+    /* Make the beach */
     makeBeach();
-    makeDunes({
-      totalDunes : settings.totalDunes
-    });
-    
+
     /* Make the beachball and give it motion */
     makeBeachball()
     makeBeachballMotion({
       leftRightSpeed : settings.leftRightSpeed,
-      jumpResetDelay : parseTime(settings.leftRightResetDelay)
+      jumpResetDelay : parseTime(settings.leftRightResetDelay),
+      parallaxSpeed : settings.parallaxSpeed
     });
+
+    makeDunes({
+      totalDunes : settings.totalDunes
+    });    
 
     /* Create a crab spawner */
     game.spawnCrab = crabSpawner({

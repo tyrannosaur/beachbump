@@ -56,24 +56,25 @@
    <script>
       $(document).ready(function() {
                
-        BeachBump.events.on('loaded.core', function() {
-          console.log('BeachBump core loaded');
+        BeachBump.events.on('loaded.ui', function() {
+          console.log('BeachBump loaded');
           BeachBump.restart();
         });       
 
         /* All speeds and velocities are in px/s */
         BeachBump.load({
-          maxHits : 3,
+          maxHits : 1,
           hitInvulnerabilityDuration: '1s',
           totalDunes : 5,
           crabScuttleSpeed : 15,
-          crabMinDy : -5,
+          crabMinDy : -15,
           crabMaxDy : -30,
-          maxCrabs : 15,
+          maxCrabs : 2,
           leftRightResetDelay : '0.2s',
           leftRightSpeed : 500,
-          duneSkidSpeed : 500,
-          maxDuneSkidSpeed : 1600,
+          parallaxSpeed : 40,
+          duneSkidSpeed : 300,
+          maxDuneSkidSpeed : 800,
           beachDx : 0,
           beachDy : -400,
           gameDelay : '0.05s'
