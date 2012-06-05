@@ -15,6 +15,31 @@
 
 (function(exports) {
 
+  function test(m, c) {
+    if (typeof m == 'string') { return m == c; }
+    else { return m.test(c); }
+  };
+
+  function matches(m) {  
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    for (var i=0; i<args.length; i++) {
+      if (test(m, args[i])) { return i+1; }
+    }
+    return false;
+  }
+
+  function first(m) {
+    var args = Array.prototype.slice.call(arguments, 1),
+        nArgs = [];
+
+    for (var i=0; i<args.length; i++) {        
+      if (test(m, args[i])) { nArgs.splice(0,0,args[i]); }
+      else { nArgs.push(args[i]); }
+    }  
+    return nArgs;
+  }
+
   /* The game */
 
   var $beach,
@@ -95,13 +120,25 @@
   /*  Adds a CSS class to start an animation; removes it and calls a callbacks
       once the animation has finished.
   */
-  var animator = function(el, cssClass, onStart, onEnd) {
-    var $el = $(el);
+  var animator = function(el, settings) {
+    var $el = $(el),
+        cssClass = settings.cssClass,
+        start = settings.start,
+        end = settings.end;
+
+    /* Horribly hackish */
     $el.on('animationend webkitAnimationEnd MSAnimationEnd oAnimationEnd', function(e) {
-          $el.removeClass(cssClass);
-          onEnd.call(null, e);
+          if (e.target == $el[0] && e.originalEvent.animationName == cssClass) { 
+            $el.removeClass(cssClass);
+            if (typeof end == 'function') { end.call(null, e); }
+          }
         })
-        .on('animationstart webkitAnimationStart MSAnimationStart oAnimationStart', onStart);
+        .on('animationstart webkitAnimationStart MSAnimationStart oAnimationStart', function(e) {
+          if (e.target == $el[0] && e.originalEvent.animationName == cssClass) {
+            if (typeof start == 'function') { start.call(null, e); }
+          }
+        });
+
     return function() {
       el.addClass(cssClass);  
     };
@@ -117,12 +154,7 @@
         game.events.emit('lost');
       }
       else {
-        var invTime = 1;
         game.events.emit('beachball-hit', currentHits, maxHits);
-        game.invulnerable(true);
-        setTimeout(function() {
-          game.invulnerable(false);
-        }, 1000*invTime);
       }
     }
   }
@@ -181,151 +213,63 @@
   }     
 
   function makeCollisions(settings) {     
-    var skidSpeed = settings.skidSpeed,
-        maxSpeed = settings.maxSpeed;
+    var skidSpeed = settings.duneSkidSpeed,
+        maxSpeed = settings.maxDuneSpeed;        
+
+    function duneCollide($1, $2) {
+      /* Skid off the dune to the left or right, depending on which side was hit.
+      */
+      if ($2 == '#beachball') {
+        /*
+        var beachball = scene($2),  
+            dune = scene($1),       
+            dir = (dune.shape().x - beachball.shape().x) < 0 ? skidSpeed: -skidSpeed,
+            vel = beachball.vel(),
+            velX = vel.x + dir;
+
+        velX = velX > maxSpeed ? maxSpeed : velX;
+        beachball.vel(velX , vel.y);
+        */
+      }
+    }
+
+    function crabCollide($1, $2) {
+      var crab = scene($1);
+      /*  Attach the crab to the beachball. */
+      if ($2 == '#beachball' && !invulnerable && !crab.isAttached) {    
+        crab.attach();
+      }    
+      else if (/#crab/i.test($2)) {
+        crab.collideWithCrab($2);       
+      }
+    }
  
     scene.loadCollisions({
       x : 0,
       y : 0,
-      width : $beach.width(),
-      height : $beach.height(),
+      width : beachWidth,
+      height : beachHeight,
       maxDepth : 8
     });
 
     scene.events.on('collision', function($1, $2) {     
-      var hitObj;
-
-      /*
-      // Crab on crab action: break up the crabs
-      if (/#crab/i.test($1) && /#crab/i.test($2)) {
-        var vel = 20 + Math.random() * 40;
-        scene($1).vel(vel, 0);
-        scene($2).vel(-vel, 0);
+      if (matches(/#dune/i, $1, $2)) { 
+        duneCollide.apply(this, first(/#dune/i, $1, $2)); 
       }
-      */
-
-      if ($1 == '#beachball') { hitObj = $2; }
-      else if ( $2 == '#beachball') { hitObj = $1; }
-
-      if (hitObj && !invulnerable) {
-         if (/#dune/i.test(hitObj)) {
-            // Skid off the dune to the left or right, depending on which side was hit
-            var beachball = scene('#beachball'),            
-                dir = (scene(hitObj).shape().x - beachball.shape().x) < 0 ? skidSpeed: -skidSpeed,
-                vel = beachball.vel(),
-                velX = vel.x + dir;
-
-            velX = velX > maxSpeed ? maxSpeed : velX;
-
-            beachball.vel(velX , vel.y);
-         }
-         if (/#crab/i.test(hitObj)) {            
-            scene(hitObj).despawnCrab();
-            hitBeachball();
-         }
+      if (matches(/#crab/i, $1, $2)) { 
+        crabCollide.apply(this, first(/#crab/i, $1, $2)); 
       }
     });
   } 
    
-  /* Make some crabs. Their behaviour is to follow the player
-     along the x-axis but move constantly along the y-axis
-     until they disappear offscreen.
-  */
-  function crabSpawner(settings) {
-    var scuttleSpeed = settings.scuttleSpeed,
-        dy = settings.dy,
-        maxCrabs = settings.maxCrabs,
-        spawnMinTime = settings.spawnMinTime || 0,
-        spawnMaxTime = settings.spawnMaxTime || 5,
-        numCrabs = 0,
-        rotationDelay = 4/scuttleSpeed;    
-
-    var crabTypes = [
-          'crab',
-          'pink-crab' 
-        ];
-
-    function despawnCrab() {
-      scene.remove(this.name);
-      numCrabs -= 1;
-    }      
-
-    function scuttleMotion(delay, x, y) {      
-      var p = scene('#beachball').position(),
-          dir = 0,
-          speed = dy,
-          range = 10;
-      
-      if (p.x-x < -range) { dir = -1; }
-      else if (p.x-x > range) { dir = 1; }
-
-      if (p.y > y) { speed *= 2; }
-
-      return {x: dir*scuttleSpeed, y: speed}
-    };
-
-    function crabMap(x, y) {
-      if ((dy > 0 && y >= beachHeight) ||
-          (dy < 0 && y <= 0)) {           
-            this.despawnCrab();
-      }
-      return {
-        x: (x >= 0) ? x % beachWidth : beachWidth - (-x % beachWidth),
-        y: y
-      };
-    };
-
-    function getRandomCrabType() {
-      return crabTypes[Math.floor(Math.random()*crabTypes.length)];
-    }
-
-    function spawnCrab() {
-      if (numCrabs < maxCrabs) {
-         numCrabs += 1;
-
-         var type = getRandomCrabType(),
-             id = 'crab' + (new Date()).getTime(),
-             $img = $('#' + type).clone(),
-             crab;
-
-         $img.attr('id', id)             
-             .css('-moz-animation-duration', rotationDelay + 's')
-             .css('-webkit-animation-duration', rotationDelay + 's')
-             .css('-ms-animation-duration', rotationDelay + 's')
-             .css('-o-animation-duration', rotationDelay + 's')
-             .css('animation-duration', rotationDelay + 's');
-
-         $beach.append($img.hide());      
-
-         // Make the crab hitbox slightly smaller than the crab
-         crab = scene('#' + id, {
-            x : (Math.random() < 0.5) ? $img.width() : (beachWidth - $img.width()),
-            y : beachHeight,
-            map : crabMap
-         })
-         .addMotion('scuttle', scuttleMotion)
-         .shape({
-            type : 'rectangle',
-            width : $img.width() * 0.90,
-            height : $img.height() * 0.90
-         });
-
-         crab.despawnCrab = despawnCrab;        
-   
-         $img.show();
-      }
-    }
-
-    return spawnCrab;
-  }
-
   /* Move the scene object left, right or make it bounce */
-  function motion(sceneObj, settings) {                  
+  function makeBeachballMotion(settings) {                  
     var leftRightResetDelay = settings.leftRightResetDelay,
         leftRightSpeed = Math.abs(settings.leftRightSpeed) || 0,
         leftRightReset,
         jump,
-        jumping = false;
+        jumping = false,
+        beachball = scene('#beachball');
 
     /* Only set this if the game is running */
     function invulnerable(val) {
@@ -337,27 +281,33 @@
     function jumpStart() {
       jumping = true;
       invulnerable(true);
+      beachball.events.emit('jump-start');
     }
 
     function jumpEnd() {
       jumping = false;
       invulnerable(false);
+      beachball.events.emit('jump-end');
     }
 
-    jump = animator($beachball, 'jump', jumpStart, jumpEnd);
+    jump = animator($beachball, {
+      cssClass : 'jump',
+      start : jumpStart, 
+      end : jumpEnd
+    });
 
     reset = _.debounce(function() {
-      sceneObj.vel(0, 0);
+      beachball.vel(0, 0);
     }, 1000*leftRightResetDelay);              
 
     /* Enable the motion */
     function enable(direction) {            
       switch(direction) {
         case 'left':
-          sceneObj.vel(-leftRightSpeed);
+          beachball.vel(-leftRightSpeed);
           break;
         case 'right':
-          sceneObj.vel(leftRightSpeed);
+          beachball.vel(leftRightSpeed);
           break;
         case 'up':
           if (!jumping) {
@@ -372,16 +322,183 @@
       switch(direction) {
         case 'left':
         case 'right':
-          reset();
+          //reset();
           break;
       }
     }
 
-    return {
+    beachball.motion = {
       enable : enable,
       disable : disable      
     };
   }        
+
+  /* Make some crabs. Their behaviour is to follow the player
+     along the x-axis but move constantly along the y-axis
+     until they disappear offscreen.
+  */
+  function crabSpawner(settings) {
+    var scuttleSpeed = settings.scuttleSpeed,
+        minDy = settings.minDy,
+        maxDy = settings.maxDy,
+        maxCrabs = settings.maxCrabs,
+        spawnMinTime = settings.spawnMinTime || 0,
+        spawnMaxTime = settings.spawnMaxTime || 5,
+        numCrabs = 0,
+        numAttached = 0,
+        rotationDelay = 4/scuttleSpeed,
+        beachball = scene('#beachball');
+
+    var crabs = {};
+
+    var crabTypes = [
+          'crab',
+          'pink-crab' 
+        ];
+
+    function getRandomCrabType() {
+      return crabTypes[Math.floor(Math.random()*crabTypes.length)];
+    }
+
+    function collideWithCrab($2) {
+    }
+
+    function despawn(removeOnly) {
+      var crab = this;
+
+      function remove() {
+        if (crab.attached) { 
+          game.events.emit('crab-detached', numAttached -= 1);
+        }
+        delete crabs[crab.name];
+        scene.remove(crab);
+        numCrabs -= 1;
+      }
+
+      if (removeOnly) {
+        return remove();
+      }
+
+      // Make it look like the crab is on the beach
+      if (this.attached) {
+        this.removeMotion('attach')
+            .addMotion('dead', function(delay, x, y) {
+              return {x:0, y:-20};
+            });
+      }
+       
+      animator($(this.name), {
+        cssClass : 'crab-detached',
+        end : remove
+      })();
+    }      
+
+    function attach() {    
+      var radius = beachball.shape().radius,
+          crab = this,
+          $crab = $(this.name),
+          xOffset;
+
+      this.isCollidable = false;
+      this.attached = true;
+
+      // Attach it on the left or right side of the beachball
+      if ((beachball.position().x - this.position().x) > 0) {
+        xOffset = -this.width();
+      }
+      else {
+        xOffset = 2*radius;
+      }
+
+      this.style('z-index', '40')
+          .removeMotion('scuttle')              
+          .addMotion('attach', function(delay, x, y) {
+              var bPos = beachball.position();
+              return {
+                x: bPos.x - x + xOffset,
+                y: bPos.y - y + radius
+              };                   
+          });
+                 
+      game.events.emit('crab-attached', numAttached += 1);
+      animator($crab, {
+        cssClass : 'crab-attached', 
+        end : function(e) {
+          hitBeachball();
+          crab.despawn();
+        }
+      })();
+    }
+
+    game.numAttached = function() {
+      return numAttached;
+    }
+
+    function spawnCrab() {
+      if (numCrabs < maxCrabs) {
+         numCrabs += 1;
+
+         var type = getRandomCrabType(),
+             id = 'crab' + (new Date()).getTime(),
+             $img = $('#' + type).clone(),
+             speed = minDy + Math.random() * (maxDy - minDy),
+             crab;            
+
+         function scuttleMotion(delay, x, y) {      
+            return {x:0, y:speed}
+         };
+
+         function crabMap(x, y) {
+            if ((speed > 0 && y >= beachHeight) ||
+                (speed < 0 && y <= 0)) {           
+                  this.despawn(true);
+            }
+            return {
+              x: (x >= 0) ? x % beachWidth : beachWidth - (-x % beachWidth),
+              y: y
+            };
+         };
+
+         $img.attr('id', id);
+         $beach.append($img.hide());      
+
+         // Make the crab hitbox slightly smaller than the crab
+         crab = crabs['#' + id] = scene('#' + id, {
+            x : Math.random() * (beachWidth - $img.width()),
+            y : beachHeight,
+            map : crabMap
+         })
+         .addMotion('scuttle', scuttleMotion)
+         .shape({
+            type : 'rectangle',
+            width : $img.width() * 0.90,
+            height : $img.height() * 0.90
+         });
+
+         crab.despawn = despawn;    
+         crab.attach = attach;
+         crab.collideWithCrab = collideWithCrab;
+   
+         $img.show();
+      }
+    }
+
+    // Remove all crabs attached to the player if the game is lost or restarted
+    game.events.on('lost restarted', function() {
+      _.each(crabs, function(crab, id) { crab.despawn(); });
+    });
+
+    // or removed attached ones if the beachball jumps and kill the others
+    beachball.events.on('jump-start', function() {
+      _.each(crabs, function(crab, id) { 
+        if (crab.attached) { 
+          crab.despawn(); 
+        }
+      });
+    });    
+
+    return spawnCrab;
+  }
 
   game.start = function() {
     game.invulnerable(false);
@@ -410,6 +527,14 @@
 
   game.started = function() {
     return started;
+  }
+
+  game.currentHits = function() {
+    return currentHits;
+  }
+
+  game.maxHits = function() {
+    return maxHits;
   }
 
   game.load = function(settings) {
@@ -442,15 +567,16 @@
     });
     
     /* Make the beachball and give it motion */
-    var beachball = makeBeachball();
-    beachball.motion = motion(beachball, {
+    makeBeachball()
+    makeBeachballMotion({
       leftRightSpeed : settings.leftRightSpeed,
       jumpResetDelay : parseTime(settings.leftRightResetDelay)
     });
 
     /* Create a crab spawner */
     game.spawnCrab = crabSpawner({
-      dy : settings.crabDy,
+      minDy : settings.crabMinDy,
+      maxDy : settings.crabMaxDy,
       scuttleSpeed : settings.crabScuttleSpeed,
       maxCrabs : settings.maxCrabs
     });

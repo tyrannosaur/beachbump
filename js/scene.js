@@ -22,6 +22,12 @@
     return {x: u, y: v};
   }
 
+  function findKey(obj) {
+    if (objects.hasOwnProperty(obj)) { return obj; }
+    else if (objects.hasOwnProperty(obj.name)) { return obj.name; }
+    else if (objects.hasOwnProperty(obj.selector)) { return obj.selector; }
+  }
+
   /*  Find a scene object with the given selector,
       or add a new scene objects if additional arguments are given.
   */
@@ -29,13 +35,14 @@
     var selector = arguments[0],
         settings = arguments[1];
     
+    if (!selector) { return undefined; }
     if (settings) {
       return objects[selector] = new SceneObj(selector,
                                               scene.select(selector), 
                                               settings);
     }
     else {
-      return objects[selector];
+      return objects[findKey(selector)];
     }
   }
  
@@ -61,13 +68,15 @@
 
   /* Remove a scene object. */
   scene.remove = function(selector) {
-    if (objects.hasOwnProperty(selector)) {
+    selector = findKey(selector);
+    if (selector) {
       var node = objects[selector].node,
           parentNode = node.parentNode;          
 
       if (parentNode) {
         parentNode.removeChild(node);
       }
+      objects[selector].events.clear();
       delete objects[selector];
     }
     return this;
@@ -153,21 +162,32 @@
   
   // bind events
   EventEmitter.prototype.on = function(type, func) {
-    (this.callbacks[type] = this.callbacks[type] || [])
-    .push(func);
+    var types = type.split(/\s+/);
+    for (var i=0; i<types.length; i++) {
+      (this.callbacks[types[i]] = this.callbacks[types[i]] || [])
+      .push(func);
+    }
+    return this;
+  }
+
+  EventEmitter.prototype.clear = function() {
+    this.callbacks = {};
     return this;
   }
 
   /* A Scene Object */
   function SceneObj(selector, node, settings) {    
-      this.node = node;             // DOM node or nodes
+      this.node = node;                   // DOM node
 
-      this.enabled = true;          // if enabled, the move('next') function of
-                                    // this SceneObj will be called every update of the
-                                    // start loop
+      this.enabled = true;                // if enabled, the position('next') function of
+                                          // this SceneObj will be called every update of the
+                                          // start loop
 
-      this._motions = [];            // list of motion functions                                       
-      this._intervals = [];
+      this.events = new EventEmitter();   // event emitter bound to this scene object.
+                                          // It will be cleared when the object is removed
+  
+      this._motions = [];                 // list of motion functions                                       
+
 
       // the position mapping function
       this.map = settings.map || defaultMap
@@ -240,6 +260,11 @@
     return this;    
   };
 
+  SceneObj.prototype.removeMotion = function(name) {  
+    delete this._motions[name];
+    return this;
+  }
+
   /*  Instantaneously move to the given or calculated position.
   
       // sum the current motions to get the next position
@@ -305,6 +330,7 @@
       return this;
     }
   }; 
+
 /*
   SceneObj.prototype.makeVelocityMotion = function(dx, dy) {
     var velocity = function() {};
