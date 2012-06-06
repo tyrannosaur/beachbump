@@ -15,12 +15,14 @@
 
 (function(exports) {
 
-  function test(m, c) {
+  /* Some helpers. */
+
+  var test = function(m, c) {
     if (typeof m == 'string') { return m == c; }
     else { return m.test(c); }
   };
 
-  function matches(m) {  
+  var matches = function(m) {  
     var args = Array.prototype.slice.call(arguments, 1);
 
     for (var i=0; i<args.length; i++) {
@@ -29,7 +31,7 @@
     return false;
   }
 
-  function first(m) {
+  var first = function(m) {
     var args = Array.prototype.slice.call(arguments, 1),
         nArgs = [];
 
@@ -40,7 +42,35 @@
     return nArgs;
   }
 
-  /* The game */
+
+  /*  Adds a CSS class to start an animation; removes it and calls a callbacks
+      once the animation has finished.
+  */
+  var animator = function(el, settings) {
+    var $el = $(el),
+        cssClass = settings.cssClass,
+        start = settings.start,
+        end = settings.end;
+
+    /* Horribly hackish */
+    $el.on('animationend webkitAnimationEnd MSAnimationEnd oAnimationEnd', function(e) {
+          if (e.target == $el[0] && e.originalEvent.animationName == cssClass) { 
+            $el.removeClass(cssClass);
+            if (typeof end == 'function') { end.call(null, e); }
+          }
+        })
+        .on('animationstart webkitAnimationStart MSAnimationStart oAnimationStart', function(e) {
+          if (e.target == $el[0] && e.originalEvent.animationName == cssClass) {
+            if (typeof start == 'function') { start.call(null, e); }
+          }
+        });
+
+    return function() {
+      el.addClass(cssClass);  
+    };
+  }
+
+  /* The game itself. */
 
   var $beach,
       $beachball,
@@ -64,9 +94,25 @@
   var maps = {};
   var dunes = [];
 
+  /* Shift the beach and dunes left or right */
   function shiftBeach(shift) {
     beachDx = shift;
     for (var i=0; i<dunes.length; i++) { dunes[i].vel(shift, dunes[i].vel().y); }
+  }
+
+  /* Convenience function to call when the beachball has been hit by something
+     detrimental.
+  */     
+  function hitBeachball() {    
+    if (!invulnerable) {
+      currentHits += 1;
+      if (currentHits >= maxHits) {      
+        game.events.emit('lost');
+      }
+      else {
+        game.events.emit('beachball-hit', currentHits, maxHits);
+      }
+    }
   }
 
   /*  Clamp the beachball to the sides of the screen. */
@@ -105,7 +151,7 @@
 
   /*  Send or receive events from the game */
   game.events = new scene.EventEmitter();
-
+   
   /*  Get the main loop delay */
   game.delay = function() {
     return delay;
@@ -123,48 +169,92 @@
     }
   }
 
-  /*  Adds a CSS class to start an animation; removes it and calls a callbacks
-      once the animation has finished.
-  */
-  var animator = function(el, settings) {
-    var $el = $(el),
-        cssClass = settings.cssClass,
-        start = settings.start,
-        end = settings.end;
+  game.start = function() {
+    game.invulnerable(false);
+    scene.start(delay);
+    started = true;
+    game.events.emit('started');
+  };
 
-    /* Horribly hackish */
-    $el.on('animationend webkitAnimationEnd MSAnimationEnd oAnimationEnd', function(e) {
-          if (e.target == $el[0] && e.originalEvent.animationName == cssClass) { 
-            $el.removeClass(cssClass);
-            if (typeof end == 'function') { end.call(null, e); }
-          }
-        })
-        .on('animationstart webkitAnimationStart MSAnimationStart oAnimationStart', function(e) {
-          if (e.target == $el[0] && e.originalEvent.animationName == cssClass) {
-            if (typeof start == 'function') { start.call(null, e); }
-          }
-        });
-
-    return function() {
-      el.addClass(cssClass);  
-    };
+  game.unpause = function() {
+    scene.start(delay);
+    game.events.emit('unpaused');
   }
 
-  /* Convenience function to call when the beachball has been hit by something
-     detrimental.
-  */     
-  function hitBeachball() {    
-    if (!invulnerable) {
-      currentHits += 1;
-      if (currentHits >= maxHits) {      
-        game.events.emit('lost');
-      }
-      else {
-        game.events.emit('beachball-hit', currentHits, maxHits);
-      }
-    }
+  game.pause = function() {
+    scene.stop();
+    game.events.emit('paused');
+  };
+
+  game.restart = function() {
+    currentHits = 0;
+    game.invulnerable(true);
+    scene.start(delay);
+    started = false;
+    game.events.emit('restarted');
+  };
+
+  game.started = function() {
+    return started;
   }
-       
+
+  game.currentHits = function() {
+    return currentHits;
+  }
+
+  game.maxHits = function() {
+    return maxHits;
+  }
+
+  game.load = function(settings) {
+    var parseTime = scene.parseTime;
+
+    /* Set these global variables */        
+    $beach = $('#beach');
+    $beachball = $('#beachball');
+    beachWidth = $beach.width();
+    beachHeight = $beach.height();
+
+    delay = parseTime(settings.gameDelay);
+    beachDx = settings.beachDx;
+    beachDy = settings.beachDy;
+
+    maxHits = settings.maxHits;
+    currentHits = settings.initialHits || 0;
+    hitInvulnerabilityDuration = parseTime(settings.hitInvulnerabilityDuration);
+
+    /* Set up collisions */
+    makeCollisions({
+      duneSkidSpeed : settings.duneSkidSpeed, 
+      maxDuneSkidSpeed : settings.maxDuneSkidSpeed
+    });
+
+    /* Make the beach */
+    makeBeach();
+
+    /* Make the beachball and give it motion */
+    makeBeachball()
+    makeBeachballMotion({
+      leftRightSpeed : settings.leftRightSpeed,
+      jumpResetDelay : parseTime(settings.leftRightResetDelay),
+      parallaxSpeed : settings.parallaxSpeed
+    });
+
+    makeDunes({
+      totalDunes : settings.totalDunes
+    });    
+
+    /* Create a crab spawner */
+    game.spawnCrab = crabSpawner({
+      minDy : settings.crabMinDy,
+      maxDy : settings.crabMaxDy,
+      scuttleSpeed : settings.crabScuttleSpeed,
+      maxCrabs : settings.maxCrabs
+    });
+
+    game.events.emit('loaded.core', settings);    
+  };
+
   /*  Make the beachball */
   function makeBeachball() {
     var width = $beachball.width(),
@@ -305,6 +395,7 @@
         crabCollide.apply(this, first(/#crab/i, $1, $2)); 
       }
     });
+
   } 
    
   /* Move the scene object left, right or make it bounce */
@@ -544,91 +635,5 @@
 
     return spawnCrab;
   }
-
-  game.start = function() {
-    game.invulnerable(false);
-    scene.start(delay);
-    started = true;
-    game.events.emit('started');
-  };
-
-  game.unpause = function() {
-    scene.start(delay);
-    game.events.emit('unpaused');
-  }
-
-  game.pause = function() {
-    scene.stop();
-    game.events.emit('paused');
-  };
-
-  game.restart = function() {
-    currentHits = 0;
-    game.invulnerable(true);
-    scene.start(delay);
-    started = false;
-    game.events.emit('restarted');
-  };
-
-  game.started = function() {
-    return started;
-  }
-
-  game.currentHits = function() {
-    return currentHits;
-  }
-
-  game.maxHits = function() {
-    return maxHits;
-  }
-
-  game.load = function(settings) {
-    var parseTime = scene.parseTime;
-
-    /* Set these global variables */        
-    $beach = $('#beach');
-    $beachball = $('#beachball');
-    beachWidth = $beach.width();
-    beachHeight = $beach.height();
-
-    delay = parseTime(settings.gameDelay);
-    beachDx = settings.beachDx;
-    beachDy = settings.beachDy;
-
-    maxHits = settings.maxHits;
-    currentHits = settings.initialHits || 0;
-    hitInvulnerabilityDuration = parseTime(settings.hitInvulnerabilityDuration);
-
-    /* Set up collisions */
-    makeCollisions({
-      duneSkidSpeed : settings.duneSkidSpeed, 
-      maxDuneSkidSpeed : settings.maxDuneSkidSpeed
-    });
-
-    /* Make the beach */
-    makeBeach();
-
-    /* Make the beachball and give it motion */
-    makeBeachball()
-    makeBeachballMotion({
-      leftRightSpeed : settings.leftRightSpeed,
-      jumpResetDelay : parseTime(settings.leftRightResetDelay),
-      parallaxSpeed : settings.parallaxSpeed
-    });
-
-    makeDunes({
-      totalDunes : settings.totalDunes
-    });    
-
-    /* Create a crab spawner */
-    game.spawnCrab = crabSpawner({
-      minDy : settings.crabMinDy,
-      maxDy : settings.crabMaxDy,
-      scuttleSpeed : settings.crabScuttleSpeed,
-      maxCrabs : settings.maxCrabs
-    });
-
-    game.events.emit('loaded.core', settings);    
-  };
 
 })(this);

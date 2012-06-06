@@ -1,6 +1,0 @@
-/* the humans responsible & colophon */
-/* humanstxt.org */
-
-/* TEAM */
-  tyrannosaur : Charlie Liban
-  Site: http://tyrannosaur.ca  

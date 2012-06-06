@@ -26,8 +26,7 @@
   <link rel="apple-touch-startup-image" sizes="640x960" href="images/startup-retina.png"/>
 
   <link href='http://fonts.googleapis.com/css?family=Wellfleet' rel='stylesheet' type='text/css'>
-  <link href="style/style.css" rel="stylesheet" type="text/css" />
-  <link href="style/animation.css" rel="stylesheet" type="text/css" />
+  <link href="style/style.min.css" rel="stylesheet" type="text/css" />
 </head>
 
 <body> 
@@ -48,14 +47,13 @@
    </div>
    <script src="js/jquery-1.7.2.min.js"></script>
    <script src="js/underscore.min.js"></script>
-   <script src="js/QuadTree.js"></script>
-   <script src="js/scene.js"></script>
-   <script src="js/scene.collisions.js"></script>   
-   <script src="js/beachbump/game.js"></script>
-   <script src="js/beachbump/ui.js"></script>
+   <script src="js/QuadTree.min.js"></script>
+   <script src="js/scene.min.js"></script>
+   <script src="js/scene.collisions.min.js"></script>   
+   <script src="js/beachbump/game.min.js"></script>
+   <script src="js/beachbump/ui.min.js"></script>
    <script>
-      $(document).ready(function() {
-               
+      $(document).ready(function() {               
         BeachBump.events.on('loaded.ui', function() {
           console.log('BeachBump loaded');
           BeachBump.restart();

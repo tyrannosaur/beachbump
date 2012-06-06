@@ -104,31 +104,14 @@
     /* A crab has attached to the beachball! */
     game.events.on('crab-attached', function(numAttached) {
       $hitCounter.fadeIn();
-      $hitCounter.children().removeClass('flash')
-                            .addClass('flash');
     });
 
     game.events.on('crab-detached', function(numAttached) {
       $hitCounter.fadeOut();
-      $hitCounter.children().removeClass('flash');
     });
 
     /* The beachball has been hit */
     game.events.on('beachball-hit', function(currentHits, maxHits) {
-      var icons =  $hitCounter.children();
-
-      icons.slice(maxHits-currentHits)
-                 .css('opacity', 0.25);
-
-      icons.removeClass('flash')
-           .removeClass('bounce');
-
-      var min = Math.min(Math.ceil(maxHits/3), 2);
-
-      // Bounce the remaining hit points if there are less than 'min' remaining     
-      if (currentHits >= maxHits-min) {
-        icons.slice(0, min).addClass('bounce');
-      }
       $hitCounter.fadeOut();
     });
      
@@ -140,8 +123,6 @@
 
     /* We've lost */
     game.events.on('lost', function() {
-      $hitCounter.children().css('opacity', 1)
-                            .removeClass('bounce flash');      
       game.restart();  
     });
 
@@ -157,7 +138,7 @@
       $hitCounter.fadeOut();
       crabSpawner.stop();
       if (firstTime) {
-        $message.html('touch the screen to start');     
+        $message.html('touch the screen or press the "S" key to start<h3>← and → move left and right; space jumps</h3>');     
         firstTime = false;
       }
       else {
@@ -255,6 +236,7 @@
     makeGravityPoller();
 
     $hitCounter.hide();
+    $hitCounter.children().addClass('flash');
 
     game.events.emit('loaded.ui');
   };
